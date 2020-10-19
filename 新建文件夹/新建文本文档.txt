@@ -1,1 +1,297 @@
-a
+Public Class Class1
+    Private Shared labelList() As Double = {0.000001, 0.000002, 0.000003, 0.000004, 0.000005, 0.000006, 0.000007, 0.000008, 0.000009, 0.00001, 0.00002, 0.00003, 0.00004, 0.00005, 0.00006, 0.00007, 0.00008, 0.00009, 0.0001, 0.0002, 0.0003, 0.0004, 0.0005, 0.0006, 0.0007, 0.0008, 0.0009, 0.001, 0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 20000, 30000, 40000, 50000, 60000, 70000, 80000, 90000, 100000}
+    Private Shared displayList() As Double = {0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000}
+
+    ''' <summary>
+    ''' 对数显示调用方法
+    ''' </summary>
+    ''' <param name="cht">chart控件</param>
+    ''' <param name="isAuto">是否自动显示,如果是复位，需要传入maxX及minX参数，如果是通过放大chart控件调用此方法，则无需用到maxX及minX</param>
+    ''' <param name="maxX"></param>
+    ''' <param name="minX"></param>
+    ''' <remarks></remarks>
+    Public Shared Sub LogDisplay(ByVal cht As Chart, ByVal isAuto As Boolean, ByVal maxX As Double, ByVal minX As Double)
+
+        Dim max As Double = maxX
+        Dim min As Double = minX
+
+        '设置log显示
+
+        If cht.ChartAreas(0).AxisX.IsLogarithmic Then
+
+            If isAuto Then
+
+                cht.ChartAreas(0).AxisX.ScaleView.ZoomReset(10)
+                cht.ChartAreas(0).AxisY.ScaleView.ZoomReset(10)
+                cht.ChartAreas(0).AxisX.Maximum = maxX
+                cht.ChartAreas(0).AxisX.Minimum = minX
+                With cht.ChartAreas(0).AxisX
+                    .ScaleView.Zoomable = True
+                    .CustomLabels.Clear()
+                    .IsStartedFromZero = False
+                    .LogarithmBase = 10
+                    .LabelStyle.Enabled = True
+                    .IsLabelAutoFit = False
+                    cht.ChartAreas(0).AxisX.MinorTickMark.Enabled = True
+                    cht.ChartAreas(0).AxisX.MinorTickMark.TickMarkStyle = TickMarkStyle.InsideArea
+                    cht.ChartAreas(0).AxisX.MinorTickMark.Interval = 0
+                    cht.ChartAreas(0).AxisX.Title = "Frequency[Hz]"
+                    Dim finalDisplayList As New List(Of Double)
+                    '将要显示的label插入最终显示的列表中
+                    For Each myLabel As Double In displayList
+                        If myLabel >= min AndAlso myLabel <= max Then
+                            finalDisplayList.Add(myLabel)
+                        End If
+                    Next
+                    If displayList.Contains(max) = False Then
+                        finalDisplayList.Add(max)
+                    End If
+                    If displayList.Contains(min) = False Then
+                        finalDisplayList.Add(min)
+                    End If
+
+                    '画X轴网格线
+                    For Each myCurrentLabel As Double In labelList
+                        Dim logValue As Double = Math.Log10(myCurrentLabel)
+                        .CustomLabels.Add(logValue - 1, logValue + 1, "", 0, LabelMarkStyle.None, GridTickTypes.All)
+                    Next
+
+                    '把需要显示的label添加到即将要显示的label中
+                    Dim tempList As New List(Of Double)
+                    For Each myLabel As Double In labelList
+                        If myLabel > min AndAlso myLabel < max Then
+                            tempList.Add(myLabel)
+                        End If
+                    Next
+
+                    If tempList.Count = 0 Then
+                        finalDisplayList.InsertRange(finalDisplayList.Count, tempList.ToArray)
+                        Dim diff As Double = max - min
+                        Dim stepDiff As Double
+                        stepDiff = diff / 10
+                        For i = 1 To 9
+                            finalDisplayList.Add((i * stepDiff) + Math.Ceiling(min / 10) * 10)
+                        Next
+                        finalDisplayList.Sort()
+                    ElseIf tempList.Count <= 10 Then
+                        finalDisplayList.InsertRange(finalDisplayList.Count, tempList.ToArray)
+                    Else
+                        '标签足够多的情况下
+                        finalDisplayList.Sort()
+                        Dim delta As Double
+                        For i = finalDisplayList.Count - 1 To 0 Step -1
+                            If tempList.Count > 35 Then
+                                delta = 1.6
+                            Else
+                                delta = 1.3
+                            End If
+                            ' End If
+                            If i = 1 Then
+                                '去除第一个与第二个之间太相近的标签
+                                If finalDisplayList.Item(i) / finalDisplayList(0) < delta Then
+                                    finalDisplayList.RemoveAt(i)
+                                End If
+                            ElseIf i = finalDisplayList.Count - 2 Then
+                                '去除倒数第二个与最后一个太相近的标签
+                                If finalDisplayList.Last / finalDisplayList.Item(i) < delta Then
+                                    finalDisplayList.RemoveAt(i)
+                                End If
+                            End If
+                        Next
+
+                    End If
+                    finalDisplayList = finalDisplayList.Distinct.ToList
+
+                    '**********************************************************
+                    finalDisplayList.Sort()
+                    Dim maxRange As Double = (Math.Log10(finalDisplayList.Max / finalDisplayList.Min)) / 12
+                    Dim preValue As Double = finalDisplayList.Min
+                    Dim lastValue As Double = finalDisplayList.Max
+                    Dim newFinalDisplayList As New List(Of Double)
+                    For Each myValue As Double In finalDisplayList
+                        If myValue <> preValue AndAlso (Math.Log10(myValue / preValue) < maxRange Or Math.Log10(lastValue / myValue) < maxRange) AndAlso lastValue <> myValue Then
+
+                        Else
+                            preValue = myValue
+                            newFinalDisplayList.Add(myValue)
+                        End If
+
+                    Next
+
+                    '**********************************************************
+
+                    Dim displayNum As Double
+                    Dim actualNum As Double
+                    For i = 0 To newFinalDisplayList.Count - 1
+                        Dim myLabel As Double = newFinalDisplayList.Item(i)
+                        If i = 0 Then
+                            actualNum = myLabel + 0.0000001
+                        ElseIf i = newFinalDisplayList.Count - 1 Then
+                            actualNum = myLabel - 0.0000001
+                        Else
+                            actualNum = myLabel
+                        End If
+
+                        displayNum = myLabel
+
+                        If displayNum < 0.001 Then
+                            .CustomLabels.Add(Math.Log10(actualNum) - 1, Math.Log10(actualNum) + 1, (displayNum * 10 ^ 6).ToString, 0, LabelMarkStyle.None, GridTickTypes.All)
+                        ElseIf displayNum < 1 Then
+                            .CustomLabels.Add(Math.Log10(actualNum) - 1, Math.Log10(actualNum) + 1, String.Format("{0:F0}k", displayNum * 1000), 0, LabelMarkStyle.None, GridTickTypes.All)
+                        ElseIf displayNum < 1000 Then
+                            .CustomLabels.Add(Math.Log10(actualNum) - 1, Math.Log10(actualNum) + 1, displayNum.ToString + "M", 0, LabelMarkStyle.None, GridTickTypes.All)
+                        Else
+                            .CustomLabels.Add(Math.Log10(actualNum) - 1, Math.Log10(actualNum) + 1, (displayNum / 1000).ToString + "G", 0, LabelMarkStyle.None, GridTickTypes.All)
+                        End If
+                    Next
+
+                End With
+
+
+            Else
+
+                Try
+
+                    cht.ChartAreas(0).AxisX.MinorTickMark.Enabled = True
+                    cht.ChartAreas(0).AxisX.MinorTickMark.TickMarkStyle = TickMarkStyle.InsideArea
+                    cht.ChartAreas(0).AxisX.MinorTickMark.Interval = 0
+                    cht.ChartAreas(0).AxisX.Title = "Frequency[Hz]"
+
+                    With cht.ChartAreas(0).AxisX
+                        If .CustomLabels(0).Text = .CustomLabels.Last.Text Then
+                            .ScaleView.Zoomable = False
+                            Exit Sub
+                        ElseIf .CustomLabels.Count = 0 Then
+                            .ScaleView.Zoomable = False
+                            Exit Sub
+                        End If
+                        .CustomLabels.Clear()
+                        .IsStartedFromZero = False
+                        .LogarithmBase = 10
+                        .LabelStyle.Enabled = True
+                        .IsLabelAutoFit = False
+
+                        '有时候即使是log显示了，但这里获取到的值仍然是有问题的，非log的值
+                        If .ScaleView.ViewMaximum > 10 Then
+                            max = .ScaleView.ViewMaximum
+                            min = .ScaleView.ViewMinimum
+                        Else
+                            max = 10 ^ .ScaleView.ViewMaximum
+                            min = 10 ^ .ScaleView.ViewMinimum
+                        End If
+
+                        If max > 100000 Or min > 100000 Or min >= max Then
+                            Exit Sub
+                        End If
+
+
+                        max = Math.Log10(max)
+                        min = Math.Log10(min)
+                        Dim arrSub() As Double = {0, 0.2, 0.4, 0.6, 0.8, 1}
+                        For Each myCurrentLabel As Double In arrSub
+                            Dim logValue As Double = (min + (max - min) * myCurrentLabel)
+                            logValue = 10 ^ logValue
+                            If logValue < 0.001 Then
+                                .CustomLabels.Add(Math.Log10(logValue) - 1, Math.Log10(logValue) + 1, String.Format("{0:F0}", logValue * 10 ^ 6).ToString, 0, LabelMarkStyle.None, GridTickTypes.All)
+                            ElseIf logValue < 1 Then
+                                .CustomLabels.Add(Math.Log10(logValue) - 1, Math.Log10(logValue) + 1, String.Format("{0:F2}k", logValue * 1000), 0, LabelMarkStyle.None, GridTickTypes.All)
+                            ElseIf logValue < 1000 Then
+                                .CustomLabels.Add(Math.Log10(logValue) - 1, Math.Log10(logValue) + 1, String.Format("{0:F2}M", logValue), 0, LabelMarkStyle.None, GridTickTypes.All)
+                            Else
+                                .CustomLabels.Add(Math.Log10(logValue) - 1, Math.Log10(logValue) + 1, String.Format("{0:F2}G", logValue / 1000), 0, LabelMarkStyle.None, GridTickTypes.All)
+                            End If
+                        Next
+
+                    End With
+                Catch ex As Exception
+                    Exit Sub
+                End Try
+
+            End If
+
+
+        Else
+            If isAuto Then
+                cht.ChartAreas(0).AxisX.ScaleView.ZoomReset(10)
+                cht.ChartAreas(0).AxisY.ScaleView.ZoomReset(10)
+                cht.ChartAreas(0).AxisX.Maximum = maxX
+                cht.ChartAreas(0).AxisX.Minimum = minX
+                cht.ChartAreas(0).AxisX.Title = "Frequency[Hz]"
+                With cht.ChartAreas(0).AxisX
+                    .CustomLabels.Clear()
+                    .IsStartedFromZero = False
+                    .LabelStyle.Enabled = True
+                    .IsLabelAutoFit = False
+                    cht.ChartAreas(0).AxisX.MinorTickMark.Enabled = True
+                    cht.ChartAreas(0).AxisX.MinorTickMark.TickMarkStyle = TickMarkStyle.InsideArea
+                    cht.ChartAreas(0).AxisX.MinorTickMark.Interval = 0
+                    Dim arrSub() As Double = {0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1}
+                    With cht.ChartAreas(0).AxisX
+                        If min >= max Then
+                            Exit Sub
+                        End If
+                        For i = 0 To arrSub.Count - 1
+                            Dim displayNum As Double = (min + (max - min) * arrSub(i))
+                            Dim actualNum As Double
+                            If i = 0 Then
+                                actualNum = displayNum + 0.000001
+                            ElseIf i = arrSub.Count - 1 Then
+                                actualNum = displayNum - 0.000001
+                            Else
+                                actualNum = displayNum
+                            End If
+                            If displayNum < 0.001 Then
+                                .CustomLabels.Add(actualNum - 1000, actualNum + 1000, String.Format("{0:F0}", displayNum * 10 ^ 6).ToString, 0, LabelMarkStyle.None, GridTickTypes.All)
+                            ElseIf displayNum < 1 Then
+                                .CustomLabels.Add(actualNum - 1000, actualNum + 1000, String.Format("{0:F2}k", displayNum * 1000), 0, LabelMarkStyle.None, GridTickTypes.All)
+                            ElseIf displayNum < 1000 Then
+                                .CustomLabels.Add(actualNum - 1000, actualNum + 1000, String.Format("{0:F2}M", displayNum), 0, LabelMarkStyle.None, GridTickTypes.All)
+                            Else
+                                .CustomLabels.Add(actualNum - 1000, actualNum + 1000, String.Format("{0:F2}G", displayNum / 1000), 0, LabelMarkStyle.None, GridTickTypes.All)
+                            End If
+                        Next
+                    End With
+                End With
+            Else
+
+                cht.ChartAreas(0).AxisX.Title = "Frequency[Hz]"
+                cht.ChartAreas(0).AxisX.MinorTickMark.Enabled = True
+                cht.ChartAreas(0).AxisX.MinorTickMark.TickMarkStyle = TickMarkStyle.InsideArea
+                cht.ChartAreas(0).AxisX.MinorTickMark.Interval = 0
+                cht.ChartAreas(0).AxisX.CustomLabels.Clear()
+                cht.ChartAreas(0).AxisX.IsStartedFromZero = False
+                cht.ChartAreas(0).AxisX.LabelStyle.Enabled = True
+                cht.ChartAreas(0).AxisX.IsLabelAutoFit = True
+
+                'Dim arrSub() As Double = {0, 0.2, 0.4, 0.6, 0.8, 1}
+                'With cht.ChartAreas(0).AxisX
+
+                '    max = 0.0001 '.ScaleView.ViewMaximum
+                '    min = 0.0000001 ' .ScaleView.ViewMinimum
+
+                '    If min >= max Then
+                '        Exit Sub
+                '    End If
+
+                '    For Each myCurrentLabel As Double In arrSub
+                '        Dim logValue As Double = (min + (max - min) * myCurrentLabel)
+
+                '        If logValue < 0.001 Then
+                '            .CustomLabels.Add(logValue - 1000, logValue + 1000, String.Format("{0:F0}", logValue * 10 ^ 6).ToString, 0, LabelMarkStyle.None, GridTickTypes.All)
+                '        ElseIf logValue < 1 Then
+                '            .CustomLabels.Add(logValue - 1000, logValue + 1000, String.Format("{0:F2}k", logValue * 1000), 0, LabelMarkStyle.None, GridTickTypes.All)
+                '        ElseIf logValue < 1000 Then
+                '            .CustomLabels.Add(logValue - 1000, logValue + 1000, String.Format("{0:F2}M", logValue), 0, LabelMarkStyle.None, GridTickTypes.All)
+                '        Else
+                '            .CustomLabels.Add(logValue - 1000, logValue + 1000, String.Format("{0:F2}G", logValue / 1000), 0, LabelMarkStyle.None, GridTickTypes.All)
+                '        End If
+                '    Next
+                'End With
+            End If
+
+        End If
+
+
+
+    End Sub
+End Class
